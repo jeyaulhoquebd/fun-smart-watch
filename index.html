@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bilingual Smartwatch Simulator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a24;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .main-container {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        /* Watch Hardware Design */
+        .watch-container {
+            position: relative;
+            width: 280px;
+            height: 480px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .strap {
+            width: 150px;
+            height: 90px;
+            background: linear-gradient(to bottom, #2a2a35, #111);
+            border-radius: 15px;
+        }
+        .watch-body {
+            width: 230px;
+            height: 290px;
+            background: #b2bec3;
+            border-radius: 45px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 0 0 15px #555, 0 15px 25px rgba(0,0,0,0.6);
+            z-index: 2;
+        }
+        .watch-screen {
+            width: 200px;
+            height: 250px;
+            background: #000;
+            border-radius: 35px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        /* Status Bar */
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 15px 0;
+            font-size: 12px;
+            color: #fff;
+            position: absolute;
+            top: 0;
+            width: 170px;
+            z-index: 10;
+        }
+        .battery { display: flex; align-items: center; gap: 3px; }
+        .battery-icon { width: 20px; height: 10px; border: 1px solid #fff; border-radius: 2px; padding: 1px; }
+        .battery-level { width: 100%; height: 100%; background: #2ed573; transition: width 1s; }
+        
+        /* Buttons */
+        .side-btn {
+            position: absolute;
+            right: -12px;
+            width: 12px;
+            background: #2d3436;
+            border-radius: 0 6px 6px 0;
+            cursor: pointer;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+            transition: transform 0.1s;
+        }
+        .side-btn:active { transform: translateX(-2px); }
+        .power-btn { height: 45px; top: 60px; background: #ff4757; }
+        .home-btn { height: 35px; bottom: 70px; }
+        
+        /* Apps Design */
+        .app {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            animation: fadeIn 0.2s;
+            padding-top: 15px;
+            box-sizing: border-box;
+        }
+        .app.active { display: flex; }
+        
+        .time { font-size: 45px; font-weight: bold; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+        .date { font-size: 14px; color: #74b9ff; margin-top: 2px; }
+        
+        .heart-icon { font-size: 35px; color: #ff4757; animation: beat 1s infinite; }
+        .bpm { font-size: 22px; margin-top: 5px; }
+        
+        .stopwatch-time { font-size: 30px; font-family: monospace; color: #fbc531; margin-bottom: 10px; }
+        .btn-custom { padding: 6px 15px; background: #2d3436; color: white; border: 1px solid #636e72; border-radius: 8px; cursor: pointer; font-size: 14px; margin: 3px; transition: 0.2s;}
+        .btn-custom:hover { background: #636e72; }
+        .btn-lang { background: #0984e3; border: none; font-weight: bold; padding: 8px 20px;}
+        .btn-lang:hover { background: #74b9ff; }
+
+        .swipe-hint { margin-top: 15px; font-size: 11px; color: #888; animation: pulse 2s infinite; }
+
+        @keyframes beat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+        /* Information Panel */
+        .info-panel {
+            background: #2b2b3c;
+            width: 450px;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .info-panel h2 { margin-top: 0; color: #fbc531; border-bottom: 2px solid #555; padding-bottom: 10px; font-size: 20px;}
+        .log-box {
+            height: 350px;
+            background: #1e1e2f;
+            padding: 15px;
+            border-radius: 10px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #dcdde1;
+        }
+        .log-entry { margin-bottom: 15px; border-left: 4px solid #00cec9; padding-left: 12px; animation: slideIn 0.3s; }
+        .highlight { color: #ff7675; font-weight: bold; font-size: 15px; }
+        
+        @keyframes slideIn { from { opacity: 0; transform: translateX(15px); } to { opacity: 1; transform: translateX(0); } }
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    <!-- Watch Hardware -->
+    <div class="watch-container">
+        <div class="strap"></div>
+        <div class="watch-body">
+            <!-- Buttons -->
+            <div class="side-btn power-btn" onclick="togglePower()" title="Power"></div>
+            <div class="side-btn home-btn" onclick="goHome()" title="Home"></div>
+            
+            <!-- Watch Screen -->
+            <div class="watch-screen" id="screen">
+                
+                <!-- Status Bar -->
+                <div class="status-bar" id="status-bar">
+                    <span id="small-time">10:00</span>
+                    <div class="battery">
+                        <span id="bat-text">100%</span>
+                        <div class="battery-icon"><div class="battery-level" id="bat-level"></div></div>
+                    </div>
+                </div>
+
+                <!-- App 0: Clock -->
+                <div id="app-clock" class="app active" onclick="nextApp()">
+                    <div class="time" id="clock-time">10:00</div>
+                    <div class="date" id="clock-date">Mon, 1 Jan</div>
+                    <div class="swipe-hint" id="hint-1">Tap to swipe ➔</div>
+                </div>
+
+                <!-- App 1: Health -->
+                <div id="app-health" class="app" onclick="nextApp()">
+                    <div class="heart-icon">❤️</div>
+                    <div class="bpm"><span id="heart-rate">--</span> <span id="ui-bpm">BPM</span></div>
+                    <div style="font-size: 15px; color: #00cec9; margin-top: 15px;">👣 5,230 <span id="ui-steps">Steps</span></div>
+                    <div class="swipe-hint" id="hint-2">Tap to swipe ➔</div>
+                </div>
+
+                <!-- App 2: Stopwatch -->
+                <div id="app-stopwatch" class="app" onclick="nextApp()">
+                    <div style="color: #74b9ff; margin-bottom: 10px; font-weight: bold;" id="ui-sw-title">Stopwatch</div>
+                    <div class="stopwatch-time" id="sw-time">00:00.0</div>
+                    <div>
+                        <button class="btn-custom" id="btn-start" onclick="startStopwatch(event)">Start</button>
+                        <button class="btn-custom" id="btn-reset" onclick="resetStopwatch(event)">Reset</button>
+                    </div>
+                    <div class="swipe-hint" id="hint-3">Tap to swipe ➔</div>
+                </div>
+
+                <!-- App 3: Settings (Language Switcher) -->
+                <div id="app-settings" class="app" onclick="nextApp()">
+                    <div style="color: #fdcb6e; margin-bottom: 15px; font-size: 18px; font-weight: bold;" id="ui-set-title">⚙️ Settings</div>
+                    <button class="btn-custom btn-lang" onclick="toggleLanguage(event)" id="btn-lang">বাংলা করুন</button>
+                    <div class="swipe-hint" id="hint-4">Tap to swipe ➔</div>
+                </div>
+
+            </div>
+        </div>
+        <div class="strap"></div>
+    </div>
+
+    <!-- Inside the Watch Explanation -->
+    <div class="info-panel">
+        <h2 id="log-title">Microcontroller Live Log ⚙️</h2>
+        <div class="log-box" id="log-box">
+            <!-- Logs will appear here -->
+        </div>
+    </div>
+</div>
+
+<script>
+    // Dictionary for Bilingual Support
+    const langData = {
+        en: {
+            logTitle: "Microcontroller Live Log ⚙️",
+            uiBpm: "BPM",
+            uiSteps: "Steps",
+            uiSwTitle: "Stopwatch",
+            btnStart: "Start",
+            btnReset: "Reset",
+            uiSetTitle: "⚙️ Settings",
+            btnLang: "বাংলা করুন",
+            swipeHint: "Tap to swipe ➔",
+            logBoot: "System Boot",
+            logBootDesc: "OS started. RTC module is keeping time. Tap screen or press side buttons.",
+            logWake: "Power Button (Wake Up)",
+            logWakeDesc: "Microcontroller woke up from sleep. Display driver IC powered the screen.",
+            logSleep: "Power Button (Sleep)",
+            logSleepDesc: "Display turned off to save battery. Processor is in Deep Sleep mode.",
+            logHome: "Home Button (Hardware)",
+            logHomeDesc: "Physical button pressed. OS hid all apps and loaded main Watch Face.",
+            logTouch: "Touchscreen Interaction",
+            logTouchClock: "Touch screen sensed tap. System rendering main watch face.",
+            logTouchHealth: "Health app launched. Optical Heart Rate sensor (PPG) activated.",
+            logTouchSw: "Stopwatch app loaded from RAM and displayed.",
+            logTouchSet: "Settings app loaded. Reading EEPROM for user preferences.",
+            logLang: "Language Changed",
+            logLangDesc: "EEPROM memory updated with 'English'. UI re-rendered.",
+            logSwStart: "Timer Module Started",
+            logSwStartDesc: "Hardware timer started. Sending interrupt signals every 100ms.",
+            logSwPause: "Interrupt Signal",
+            logSwPauseDesc: "Processor paused stopwatch timer. Current time saved to memory.",
+            logSwReset: "Memory Cleared",
+            logSwResetDesc: "Stopwatch data cleared from RAM and timer module reset.",
+            logBatDrop: "Power Management",
+            logBatDropDesc: "Battery dropped to 50%. Processor reduced background tasks."
+        },
+        bn: {
+            logTitle: "মাইক্রোকন্ট্রোলারের লাইভ লগ ⚙️",
+            uiBpm: "বিপিএম",
+            uiSteps: "পদক্ষেপ",
+            uiSwTitle: "স্টপওয়াচ",
+            btnStart: "শুরু",
+            btnReset: "রিসেট",
+            uiSetTitle: "⚙️ সেটিংস",
+            btnLang: "English",
+            swipeHint: "পরবর্তী অ্যাপ ➔",
+            logBoot: "সিস্টেম বুট",
+            logBootDesc: "অপারেটিং সিস্টেম চালু হয়েছে। রিয়েল-টাইম ক্লক (RTC) সময়ের হিসাব রাখছে। স্ক্রিনে টাচ করুন।",
+            logWake: "পাওয়ার বাটন (ওয়েক আপ)",
+            logWakeDesc: "মাইক্রোকন্ট্রোলার স্লিপ মুড থেকে জেগে উঠেছে। ডিসপ্লে আইসি স্ক্রিনে আলো দিয়েছে।",
+            logSleep: "পাওয়ার বাটন (স্লিপ মুড)",
+            logSleepDesc: "ব্যাটারি বাঁচাতে ডিসপ্লে বন্ধ করা হয়েছে। প্রসেসর এখন ডিপ-স্লিপ (Deep Sleep) মুডে আছে।",
+            logHome: "হোম বাটন (হার্ডওয়্যার)",
+            logHomeDesc: "ফিজিক্যাল বাটন চাপা হয়েছে। ওএস সব অ্যাপ আড়াল করে মেইন 'Watch Face' লোড করেছে।",
+            logTouch: "টাচস্ক্রিন সেন্সর",
+            logTouchClock: "স্ক্রিনে টাচ সেন্স হয়েছে। সিস্টেম এখন ঘড়ির মূল স্ক্রিন রেন্ডার করছে।",
+            logTouchHealth: "হেলথ অ্যাপ চালু হয়েছে। ঘড়ির পেছনের অপটিক্যাল সেন্সর (PPG) ডেটা রিড করছে।",
+            logTouchSw: "স্টপওয়াচ অ্যাপ র্যাম (RAM) থেকে লোড করা হয়েছে এবং স্ক্রিনে দেখানো হচ্ছে।",
+            logTouchSet: "সেটিংস অ্যাপ চালু হয়েছে। ইউজারের সেভ করা ডেটা EEPROM মেমোরি থেকে পড়া হচ্ছে।",
+            logLang: "ভাষা পরিবর্তন (Localization)",
+            logLangDesc: "EEPROM মেমোরিতে নতুন ভাষা 'বাংলা' সেভ হয়েছে। ইউজার ইন্টারফেস (UI) রিরেন্ডার করা হয়েছে।",
+            logSwStart: "টাইমার মডিউল চালু",
+            logSwStartDesc: "হার্ডওয়্যার টাইমার চালু হয়েছে। এটি প্রতি ১০০ মিলি-সেকেন্ড পরপর প্রসেসরকে সিগন্যাল দিচ্ছে।",
+            logSwPause: "ইন্টারাপ্ট সিগন্যাল",
+            logSwPauseDesc: "প্রসেসর স্টপওয়াচ টাইমার পজ (Pause) করেছে। মেমোরিতে বর্তমান সময় সেভ করা হয়েছে।",
+            logSwReset: "মেমোরি ক্লিয়ার",
+            logSwResetDesc: "RAM থেকে স্টপওয়াচের ডেটা মুছে ফেলা হয়েছে এবং টাইমার মডিউল রিসেট করা হয়েছে।",
+            logBatDrop: "পাওয়ার ম্যানেজমেন্ট",
+            logBatDropDesc: "ব্যাটারি ৫০% এ নেমেছে। প্রসেসর ব্যাকগ্রাউন্ড টাস্ক কিছুটা কমিয়ে দিয়েছে।"
+        }
+    };
+
+    let isPowerOn = true;
+    let currentAppIndex = 0;
+    const apps = ['app-clock', 'app-health', 'app-stopwatch', 'app-settings'];
+    let battery = 100;
+    let currentLang = 'en'; // Default language
+
+    // Initialize Boot Log
+    window.onload = () => {
+        applyLanguageTexts();
+        addLog(langData[currentLang].logBoot, langData[currentLang].logBootDesc);
+    };
+
+    // Language Toggle Function
+    function toggleLanguage(e) {
+        e.stopPropagation(); // Prevent changing app
+        currentLang = (currentLang === 'en') ? 'bn' : 'en';
+        applyLanguageTexts();
+        addLog(langData[currentLang].logLang, langData[currentLang].logLangDesc);
+    }
+
+    // Apply translations to UI
+    function applyLanguageTexts() {
+        const t = langData[currentLang];
+        document.getElementById('log-title').innerText = t.logTitle;
+        document.getElementById('ui-bpm').innerText = t.uiBpm;
+        document.getElementById('ui-steps').innerText = t.uiSteps;
+        document.getElementById('ui-sw-title').innerText = t.uiSwTitle;
+        document.getElementById('btn-start').innerText = t.btnStart;
+        document.getElementById('btn-reset').innerText = t.btnReset;
+        document.getElementById('ui-set-title').innerText = t.uiSetTitle;
+        document.getElementById('btn-lang').innerText = t.btnLang;
+        
+        for(let i=1; i<=4; i++) {
+            document.getElementById(`hint-${i}`).innerText = t.swipeHint;
+        }
+        updateClock(); // Instantly update date format
+    }
+
+    // Update Clock and Date live
+    function updateClock() {
+        if (!isPowerOn) return;
+        const now = new Date();
+        let h = now.getHours().toString().padStart(2, '0');
+        let m = now.getMinutes().toString().padStart(2, '0');
+        
+        document.getElementById('clock-time').innerText = `${h}:${m}`;
+        document.getElementById('small-time').innerText = `${h}:${m}`;
+        
+        // Change date format based on language
+        let dateOptions = { weekday: 'short', month: 'short', day: 'numeric' };
+        let locale = currentLang === 'bn' ? 'bn-BD' : 'en-US';
+        document.getElementById('clock-date').innerText = now.toLocaleDateString(locale, dateOptions);
+    }
+    setInterval(updateClock, 1000);
+
+    // Battery Drain Simulation
+    setInterval(() => {
+        if(battery > 0) {
+            battery -= isPowerOn ? 1 : 0.2;
+            document.getElementById('bat-text').innerText = Math.floor(battery) + '%';
+            document.getElementById('bat-level').style.width = battery + '%';
+            if(battery < 20) document.getElementById('bat-level').style.background = '#ff4757';
+            
+            if(Math.floor(battery) === 50) {
+                addLog(langData[currentLang].logBatDrop, langData[currentLang].logBatDropDesc);
+            }
+            if(battery <= 0) togglePower(); 
+        }
+    }, 6000);
+
+    // Simulated Heart Rate
+    setInterval(() => {
+        if (isPowerOn && currentAppIndex === 1) {
+            document.getElementById('heart-rate').innerText = Math.floor(Math.random() * (85 - 70 + 1)) + 70;
+        }
+    }, 2000);
+
+    // Stopwatch Logic
+    let swTimer = null;
+    let swTenths = 0;
+    function startStopwatch(e) {
+        e.stopPropagation();
+        if(swTimer) {
+            clearInterval(swTimer);
+            swTimer = null;
+            document.getElementById('btn-start').innerText = langData[currentLang].btnStart;
+            addLog(langData[currentLang].logSwPause, langData[currentLang].logSwPauseDesc);
+        } else {
+            document.getElementById('btn-start').innerText = currentLang === 'bn' ? "থামুন" : "Pause";
+            addLog(langData[currentLang].logSwStart, langData[currentLang].logSwStartDesc);
+            swTimer = setInterval(() => {
+                swTenths++;
+                let m = Math.floor(swTenths / 600).toString().padStart(2, '0');
+                let s = Math.floor((swTenths % 600) / 10).toString().padStart(2, '0');
+                let ms = swTenths % 10;
+                document.getElementById('sw-time').innerText = `${m}:${s}.${ms}`;
+            }, 100);
+        }
+    }
+    function resetStopwatch(e) {
+        e.stopPropagation();
+        if(swTimer) clearInterval(swTimer);
+        swTimer = null;
+        swTenths = 0;
+        document.getElementById('sw-time').innerText = "00:00.0";
+        document.getElementById('btn-start').innerText = langData[currentLang].btnStart;
+        addLog(langData[currentLang].logSwReset, langData[currentLang].logSwResetDesc);
+    }
+
+    // Logger Function
+    function addLog(action, explanation) {
+        const logBox = document.getElementById('log-box');
+        const newLog = document.createElement('div');
+        newLog.className = 'log-entry';
+        newLog.innerHTML = `<span class="highlight">${action}:</span> <br>${explanation}`;
+        logBox.prepend(newLog);
+    }
+
+    // App Navigation & Hardware Buttons
+    function togglePower() {
+        const screen = document.getElementById('screen');
+        isPowerOn = !isPowerOn;
+        const t = langData[currentLang];
+        
+        if (isPowerOn && battery > 0) {
+            screen.style.background = '#000';
+            document.getElementById('status-bar').style.display = 'flex';
+            showApp(currentAppIndex);
+            addLog(t.logWake, t.logWakeDesc);
+        } else {
+            screen.style.background = '#0a0a0a';
+            document.querySelectorAll('.app').forEach(app => app.classList.remove('active'));
+            document.getElementById('status-bar').style.display = 'none';
+            addLog(t.logSleep, t.logSleepDesc);
+        }
+    }
+
+    function goHome() {
+        if (!isPowerOn || battery <= 0) return;
+        currentAppIndex = 0;
+        showApp(currentAppIndex);
+        addLog(langData[currentLang].logHome, langData[currentLang].logHomeDesc);
+    }
+
+    function nextApp() {
+        if (!isPowerOn || battery <= 0) return;
+        currentAppIndex = (currentAppIndex + 1) % apps.length;
+        showApp(currentAppIndex);
+        
+        const t = langData[currentLang];
+        let exp = "";
+        if (currentAppIndex === 0) exp = t.logTouchClock;
+        else if (currentAppIndex === 1) exp = t.logTouchHealth;
+        else if (currentAppIndex === 2) exp = t.logTouchSw;
+        else if (currentAppIndex === 3) exp = t.logTouchSet;
+        
+        addLog(t.logTouch, exp);
+    }
+
+    function showApp(index) {
+        document.querySelectorAll('.app').forEach(app => app.classList.remove('active'));
+        document.getElementById(apps[index]).classList.add('active');
+    }
+</script>
+
+</body>
+</html>
